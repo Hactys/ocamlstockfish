@@ -6,18 +6,6 @@ type _error =
 
 exception StockfishError of _error
 
-
-let replace str tar rep = 
-	let m = String.length str in 
-	let n = String.length tar in 
-	let rec indexes i acc = if i+n <= m then (
-		match String.sub str i n with
-			| s when s = tar -> indexes (i+n) ((i+n)::i::acc)	
-			| _ -> indexes (i+1) acc)
-		else List.rev acc
-	in let idxs = indexes 0 [] in
-	let ss = List.map2 (fun i j -> String.sub str i (j-i)) (0::idxs) (idxs @ [m]) in 
-	String.concat rep (List.filter (fun e -> e <> tar) ss)
   
 
 module Engine (T : Engine_config_type) = struct
