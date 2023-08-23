@@ -1,0 +1,6 @@
+/test/*
+/_build/*
+/bin/*
+dune
+dune-project
+*.opam
