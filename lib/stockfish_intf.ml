@@ -26,28 +26,43 @@ type parameter =
 	| Debug_Log_File of string
 
 
+type _error = 
+	IncorectMove of string
+	| NoMovePlayed of string
+	| InvalidValue of string
+
+
+exception StockfishError of _error
+
+
+type move_evaluation = Best | Excelent | Good | Inaccuracy | Mistake | Blunder | Mate
+
+
 module type Engine_type = sig
 	(** Returns the Stockfish's response to a command. *)
 	val get_response : ?lines:int -> unit -> string
 
 
-	(** Send a command to Stockfish *)
+	(* Returns the full string of Stockfish's response from last ready to completition. *)
+	val get_full_response : unit -> string
+
+	(** Send a command to Stockfish. *)
 	val send_command : string -> unit
 
 
-	(** Wait until stockfish is ready *)
+	(** Wait until stockfish is ready. *)
 	val wait_ready : unit -> unit
 
 
-	(** Start a new game *)
+	(** Start a new game. *)
 	val new_game : unit -> unit
 
 
-	(** Update the engine parameters, go to doc to know all possibilities *)
+	(** Update the engine parameters, go to doc to know all possibilities. *)
 	val update_engine_parameters : parameter list -> unit
 
 	
-	(** Reset the parameters of the engine to default *)
+	(** Reset the parameters of the engine to default. *)
 	val reset_engine_parameters : unit -> unit
 
 
@@ -55,15 +70,15 @@ module type Engine_type = sig
 	val set_position : ?pos:string -> string list -> unit
 
 
-	(** Lower the skill level in order to make Stockfish play weaker *)
+	(** Lower the skill level in order to make Stockfish play weaker. Must be between 0 and 20. *)
 	val set_skill_level : int -> unit
 
 
-	(** Aims for an engine strength of the given Elo. This Elo rating has been calibrated at a time control of 60s+0.6s and anchored to CCRL 40/4. *)
+	(** Aims for an engine strength of the given Elo. This Elo rating has been calibrated at a time control of 60s+0.6s and anchored to CCRL 40/4. Must be between 1320 and 3190. *)
 	val set_elo_level : int -> unit
 
 
-	(** Sets the default engine's depth *)
+	(** Sets the default engine's depth. *)
 	val set_depth : int -> unit
 
 
@@ -75,7 +90,7 @@ module type Engine_type = sig
 	val stop : unit -> unit
 
 
-	(** Send the 'quit' command and close communication's channels *)
+	(** Send the 'quit' command and close communication's channels. *)
 	val quit : unit -> unit
 
 	
@@ -91,15 +106,15 @@ module type Engine_type = sig
 	val get_best_move_with_ponder : ?depth:int -> unit -> string * string
 
 
-	(** Returns best move with current position on the board after exactly the given time in ms *)
+	(** Returns best move with current position on the board after exactly the given time in ms. *)
 	val get_best_move_time : ?depth:int -> int -> string
 
 
-	(** Returns current board position in Forsyth–Edwards notation (FEN)*)
+	(** Returns current board position in Forsyth–Edwards notation (FEN). *)
 	val get_fen : unit -> string
 
 
-	(** Evaluates current position *)
+	(** Evaluates current position. *)
 	val get_eval : ?depth:int -> unit -> string * int
 
 
@@ -107,14 +122,14 @@ module type Engine_type = sig
 	val get_wdl_stats : ?depth:int -> unit -> int * int * int
 
 
-	(** Retunrs the engine's parameters *)
+	(** Retunrs the engine's parameters. *)
 	val get_engine_parameters : unit -> parameter array
 
 
-	(** Update the current position by playing the current move *)
+	(** Update the current position by playing the current move. *)
 	val move : string -> unit
 
 
-	(** Check if the given move is correct *)
+	(** Check if the given move is correct. *)
 	val is_move_correct : string -> bool
 end

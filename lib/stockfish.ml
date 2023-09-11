@@ -1,15 +1,8 @@
 open Stockfish_intf
 
 
-type _error = 
-	IncorectMove of string
-
-exception StockfishError of _error
-
-  
-
 module Engine (T : Engine_config_type) = struct
-	(** Submodule for values that should not be used externally *)
+	(** Submodule for values that should not be used externally. *)
 	module Private = struct
 		let in_channel, out_channel, err_channel = Unix.open_process_full T.path [||]
 		let () = begin 
@@ -19,11 +12,11 @@ module Engine (T : Engine_config_type) = struct
 				if n < 26 then 
 					loop (n+1) (input_line in_channel :: acc)
 				else String.concat "\n" (List.rev acc) 
-			in match loop 0 [] with
-				| _ -> ()  (* to destruct the type *)
+			in match loop 0 [] with | _ -> ()  (* to destruct the type. *)
 		end
 		let default_depth = ref 12
-		let cpf = ref "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"  (* Current position, reference to string*)
+		let ppf = ref ""  (* Previous position fen. *)
+		let cpf = ref "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"  (* Current position, reference to string. *)
 		let default_para = [|Threads 1; Hash 16; Ponder false; MultiPV 1; NNUE true; EvalFile "nn-[SHA256 first 12 digits].nnue";
 			UCI_AnalyseMode false; UCI_Chess960 false; UCI_ShowWDL false; UCI_LimitStrength false; UCI_Elo 1320; Skill_Level 20;
 			SyzygyPath "<empty>"; SyzygyProbeDepth 1; Syzygy50MoveRule true; SyzygyProbeLimit 7; Move_Overhead 10; 
@@ -42,25 +35,35 @@ module Engine (T : Engine_config_type) = struct
 			else String.concat "\n" (List.rev acc) 
 		in loop 0 []
 
-	
+
 	let send_command c = 
 		begin
 		output_string Private.out_channel (String.concat "" [c; "\n"]);
-		flush Private.out_channel;
+		flush Private.out_channel;  (* To be sure that the command is sended. *)
 		end
 
 
-	let wait_ready () = (
+	let wait_ready () = begin
 		send_command "isready";
 		match get_response () with _ -> ()
-		)
+	end
+
+	
+	let get_full_response () = begin
+		wait_ready ();
+		let rec loop acc = match input_line Private.in_channel with
+			| "readyok" -> acc
+			| r -> loop (r :: acc)
+		in let response = List.rev (loop [])
+		in String.concat "\n" response
+	end
 
 
 	let new_game () = 
 		wait_ready ();
 		send_command "ucinewgame"
-	
-	
+
+
 	let update_engine_parameters l = 
 		let () = wait_ready () in 
 		let conv a = match a with
@@ -99,55 +102,57 @@ module Engine (T : Engine_config_type) = struct
 		let l = Array.to_list Private.default_para in 
 		update_engine_parameters l
 
-	
+
 	let set_position ?(pos = "startpos") lm = begin
 		wait_ready ();
-		if List.length lm = 0 then
-			(if pos = "startpos" then send_command (String.concat " " (["position"; pos]))
-			else send_command (String.concat " " (["position"; "fen"; pos])))
-		else 
-			(if pos = "startpos" then send_command (String.concat " " ("position" :: pos :: "moves" :: lm))
-			else send_command (String.concat " " ("position" :: "fen" :: pos :: "moves" :: lm)));
+		let position = match pos with 
+			| "startpos" -> ["position"; pos]
+			| _ -> ["position"; "fen"; pos]
+		
+		in if List.length lm = 0 then send_command (String.concat " " position)
+		else send_command (String.concat " " ("position" :: "fen" :: pos :: "moves" :: lm));
+
 		send_command "d";
-		let rec loop () =
-			match String.split_on_char ' ' (get_response ()) with
+		let rec loop () = match String.split_on_char ' ' (get_response ()) with
 			| "Fen:" :: t -> (match get_response ~lines:2 () with _ -> (); String.concat " " t)
 			| _ -> loop ()
-		in Private.cpf := loop ()
+		in Private.ppf := "";
+		Private.cpf := loop ()
 	end
 
 
 	let set_skill_level level = 
-		if level < 0 || level > 20 then failwith "Skill_level must be between 0 and 20.";
+		if level < 0 || level > 20 then raise (StockfishError (InvalidValue "Skill_level must be between 0 and 20."));
 		wait_ready ();
 		update_engine_parameters [Skill_Level level]
 
-	
+
 	let set_elo_level level = 
-		if level < 1320 || level > 3190 then failwith "Skill_level must be between 1320 and 3190.";
+		if level < 1320 || level > 3190 then raise (StockfishError (InvalidValue "Skill_level must be between 1320 and 3190."));
 		if Private.para.(9) <> UCI_LimitStrength true then 
 			update_engine_parameters [UCI_LimitStrength true];
 		wait_ready ();
-		update_engine_parameters [UCI_Elo level]
+		update_engine_parameters [UCI_Elo level];
+		wait_ready ()
 
-	
+
 	let set_depth depth = Private.default_depth := depth
 
-	
+
 	let full_strength () =
 		update_engine_parameters [UCI_LimitStrength false; Skill_Level 20]
 	
 
 	let stop = fun () -> send_command "stop"
 
-	
+
 	let quit = fun () -> begin 
 		send_command "quit";
 		close_in Private.in_channel;
 		close_out Private.out_channel;
 		close_in Private.err_channel;
 	end
-	
+
 
 	let get_best_move_with_ponder ?(depth=(!Private.default_depth)) () =
 		wait_ready ();
@@ -167,8 +172,7 @@ module Engine (T : Engine_config_type) = struct
 	let get_best_move_time ?(depth=(!Private.default_depth)) time =
 		wait_ready ();
 		send_command (
-			String.concat " " 
-			["go"; "depth"; string_of_int depth; "movetime"; string_of_int time; ]
+			String.concat " " ["go"; "depth"; string_of_int depth; "movetime"; string_of_int time; ]
 		);
 		let rec loop () =
 			match String.split_on_char ' ' (get_response ()) with
@@ -176,7 +180,7 @@ module Engine (T : Engine_config_type) = struct
 			| ["bestmove"; m] -> m
 			| _ -> loop ()
 		in loop ()
-	
+
 
 	let get_fen () =
 		!Private.cpf
@@ -187,8 +191,9 @@ module Engine (T : Engine_config_type) = struct
 		send_command "d";
 		match get_response ~lines:1 () with _ -> ();
 		let board = get_response ~lines:18 () in
-		match get_response ~lines:4 () with _ -> 
-		if not light then board else begin
+		match get_full_response () with _ -> (* Destruct the type. *)
+		if not light then board 
+		else begin
 			let fen = get_fen () in 
 			let a = List.hd (String.split_on_char ' ' fen) in 
 			let b = String.split_on_char '/' a in 
@@ -213,8 +218,25 @@ module Engine (T : Engine_config_type) = struct
 				| h :: t -> loop (j+1) t ((process h j) :: acc)
 			in String.concat "\n" ("+-----------------+" :: List.rev ("  a b c d e f g h" :: "+-----------------+" :: loop 1 b []))
 		end
-	
-	
+
+
+	let is_move_correct m = begin
+		send_command ("go depth 1 searchmoves " ^ m);
+		match get_response ~lines:2 () with _ -> ();
+		get_response () <> "bestmove (none)"
+	end
+
+
+	let move m = begin
+		if is_move_correct m then begin
+			Private.ppf := !Private.cpf;
+			set_position ~pos:!Private.cpf [m];
+			wait_ready ()
+		end
+		else raise (StockfishError (IncorectMove (m ^ " is an invalid move in the curent position.")))
+	end
+
+
 	let get_eval ?(depth=(!Private.default_depth)) () = 
 		wait_ready ();
 		send_command ("go depth " ^ string_of_int depth);
@@ -244,24 +266,7 @@ module Engine (T : Engine_config_type) = struct
 			| _ -> loop ()
 		in loop ()
 
-	
-	let get_engine_parameters () = Array.copy Private.para
-		
 
-	let is_move_correct m = begin
-		send_command ("go depth 1 searchmoves " ^ m);
-		match get_response ~lines:2 () with _ -> ();
-		get_response () <> "bestmove (none)"
-	end
-
-
-	let move m = begin
-		if is_move_correct m then begin
-			set_position ~pos:!Private.cpf [m];
-			wait_ready ()
-		end
-		else raise (StockfishError (IncorectMove (m ^ " is an invalid move in the curent position.")))
-	end
-	
+	let get_engine_parameters () = Array.copy Private.para	
 
 end
