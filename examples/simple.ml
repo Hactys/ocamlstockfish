@@ -1,7 +1,7 @@
 open Ocamlstockfish.Stockfish_intf
 
 module Engine_config = struct
-	let path = "stockfish/stockfish-ubuntu-x86-64-avx2"
+	let path = "/path/to/stockfish"
 end
 
 

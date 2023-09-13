@@ -22,7 +22,7 @@ module Engine = Ocamlstockfish.Stockfish.Engine(Engine_config)
 val send_command : string -> unit
 val get_response : ?lines:int -> unit -> string
 ```
-Basic functions, if you don't know how Stockfish works, please consult the Stockfish documentation (https://github.com/official-stockfish/Stockfish/wiki/Commands) before using these functions.
+Basic functions, if you don't know how Stockfish works, please consult the Stockfish documentation (https://github.com/official-stockfish/Stockfish/wiki/Commands) before using these two functions.
 
 ```ocaml
 val wait_ready : unit -> unit
@@ -39,10 +39,7 @@ val update_engine_parameters : parameter list -> unit
 ```
 Update the Stockfish's parameters.
 Usage: `update_engine_parameters [Threads 2; Hash 4096; UCI_Chess960 false]`.
-Note : The `parameter` type is provide in `stockfish_intf.ml`, to use it, add at the start of the file :
-```ocaml
-open Ocamlstockfish.Stockfish_intf
-```
+Note : The `parameter` type is provide in `stockfish_intf.ml`, to use it, add at the start of the file : `open Ocamlstockfish.Stockfish_intf`
 
 ```ocaml
 val reset_engine_parameters : unit -> unit
@@ -61,9 +58,10 @@ Usage :
 ```ocaml
 val move : string -> unit
 ```
-Update the current position by playing the givven move, can raise an error : `StockfishError (IncorectMove of string)`.
+Update the current position by playing the given move, can raise an error : `StockfishError (IncorectMove of string)`.
 Usage : 
 - `move "e2e4"`
+- `move "b8c6"`
 
 ```ocaml
 val set_skill_level : int -> unit
