@@ -43,7 +43,7 @@ module type Engine_type = sig
 	val get_response : ?lines:int -> unit -> string
 
 
-	(* Returns the full string of Stockfish's response from last ready to completition. *)
+	(* Returns the full string of Stockfish's response from last read to completition. *)
 	val get_full_response : unit -> string
 
 	(** Send a command to Stockfish. *)
@@ -61,7 +61,7 @@ module type Engine_type = sig
 	(** Update the engine parameters, go to doc to know all possibilities. *)
 	val update_engine_parameters : parameter list -> unit
 
-	
+
 	(** Reset the parameters of the engine to default. *)
 	val reset_engine_parameters : unit -> unit
 
@@ -93,7 +93,7 @@ module type Engine_type = sig
 	(** Send the 'quit' command and close communication's channels. *)
 	val quit : unit -> unit
 
-	
+
 	(** Returns a visual representation of the current board position. *)
 	val get_board_visual : ?light:bool -> unit -> string
 
