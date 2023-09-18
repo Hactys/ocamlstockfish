@@ -48,7 +48,7 @@ module Engine (T : Engine_config_type) = struct
 		match get_response () with _ -> ()
 	end
 
-	
+
 	let get_full_response () = begin
 		wait_ready ();
 		let rec loop acc = match input_line Private.in_channel with
@@ -61,7 +61,8 @@ module Engine (T : Engine_config_type) = struct
 
 	let new_game () = 
 		wait_ready ();
-		send_command "ucinewgame"
+		send_command "ucinewgame";
+		wait_ready ()
 
 
 	let update_engine_parameters l = 
@@ -141,12 +142,12 @@ module Engine (T : Engine_config_type) = struct
 
 	let full_strength () =
 		update_engine_parameters [UCI_LimitStrength false; Skill_Level 20]
-	
-
-	let stop = fun () -> send_command "stop"
 
 
-	let quit = fun () -> begin 
+	let stop () = send_command "stop"
+
+
+	let quit () = begin 
 		send_command "quit";
 		close_in Private.in_channel;
 		close_out Private.out_channel;
@@ -191,7 +192,7 @@ module Engine (T : Engine_config_type) = struct
 		send_command "d";
 		match get_response ~lines:1 () with _ -> ();
 		let board = get_response ~lines:18 () in
-		match get_full_response () with _ -> (* Destruct the type. *)
+		match get_full_response () with _ -> (* To destruct the type. *)
 		if not light then board 
 		else begin
 			let fen = get_fen () in 
