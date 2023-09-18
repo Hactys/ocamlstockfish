@@ -5,7 +5,7 @@ A simple way to use Stockfish engine with OCaml
 Create a Engine_config module
 ```ocaml
 module Engine_config = struct
-	let path = "/path/to/stockfish/executable"
+    let path = "/path/to/stockfish/executable"
 end
 ```
 
@@ -21,8 +21,9 @@ module Engine = Ocamlstockfish.Stockfish.Engine(Engine_config)
 ```ocaml
 val send_command : string -> unit
 val get_response : ?lines:int -> unit -> string
+val get_full_response : unit -> string
 ```
-Basic functions, if you don't know how Stockfish works, please consult the Stockfish documentation (https://github.com/official-stockfish/Stockfish/wiki/Commands) before using these two functions.
+Basic functions, if you don't know how Stockfish works, please consult the Stockfish documentation (https://github.com/official-stockfish/Stockfish/wiki/Commands) before using these three functions.
 
 ```ocaml
 val wait_ready : unit -> unit
